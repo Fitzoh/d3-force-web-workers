@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+
+var width = 960,
+    height = 500;
+
+var color = d3.scale.category20();
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+//create worker and send message to start force graph
+var worker = new Worker('worker.js');
+worker.postMessage({width: width, height: height});
+worker.onmessage = function(msg){
+
+    //if it's the first tick, add the nodes and edges to the dom
+    if (!this.intialized){
+        this.intialized = true;
+        this.link = svg.selectAll(".link")
+                .data(msg.data.links)
+                .enter().append("line")
+                .attr("class", "link")
+                .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+
+        this.node = svg.selectAll(".node")
+                .data(msg.data.nodes)
+                .enter().append("circle")
+                .attr("class", "node")
+                .attr("r", 5)
+                .style("fill", function(d) { return color(d.group); })
+
+
+        this.node.append("title")
+                .text(function(d) { return d.name; });
+    } else {//for all subsequent ticks, update the node/link locations
+
+            this.link.attr("x1", function(d,i) { return msg.data.links[i].source.x; })
+                     .attr("y1", function(d,i) { return msg.data.links[i].source.y; })
+                     .attr("x2", function(d,i) { return msg.data.links[i].target.x; })
+                     .attr("y2", function(d,i) { return msg.data.links[i].target.y; });
+
+            this.node.attr("cx", function(d,i) { return msg.data.nodes[i].x; })
+                     .attr("cy", function(d,i) { return msg.data.nodes[i].y; });
+
+    }
+}
+
+</script>
+
